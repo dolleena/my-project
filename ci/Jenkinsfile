@@ -1,0 +1,14 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY = "localhost:5001"
+    IMAGE = "edgewatch-api"
+  }
+  stages {
+    stage('Checkout'){ steps { checkout scm } }
+    stage('Unit tests'){ steps { sh 'make test' } }
+    stage('Build image'){ steps { sh 'make app-build' } }
+    stage('Push image'){ steps { sh 'make app-push' } }
+    stage('Deploy (Terraform)'){ steps { sh 'make k8s-apply' } }
+  }
+}

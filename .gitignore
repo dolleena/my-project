@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Node / misc (if added later)
+node_modules/
+
+# Django
+db.sqlite3
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+
+# Docker
+*.log
+*.pid
+
+# Jenkins
+jenkins_home/
+
+# Yocto (big)
+yocto/poky/
+yocto/build/

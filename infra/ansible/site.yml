@@ -1,0 +1,24 @@
+- hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Ensure baseline packages (Ubuntu)
+      apt:
+        name: [git, make, curl, ufw, auditd]
+        state: present
+        update_cache: yes
+    - name: Enable UFW default deny
+      ufw: { state: enabled, policy: deny }
+    - name: Allow SSH
+      ufw: { rule: allow, port: "22", proto: tcp }
+    - name: Harden SSH - disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: Restart ssh
+    - name: Ensure auditd running
+      service: { name: auditd, state: started, enabled: yes }
+  handlers:
+    - name: Restart ssh
+      service: { name: ssh, state: restarted }
