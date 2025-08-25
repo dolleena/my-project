@@ -2,11 +2,11 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.33"
+      version = ">= 2.34.0"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.13"
+      version = ">= 2.13.2"
     }
   }
 }
@@ -18,8 +18,11 @@ provider "kubernetes" {
 
 provider "helm" {
   kubernetes {
-    config_path    = "~/.kube/config"
-    config_context = "kind-edgewatch"
+    host                   = null
+    config_path            = "~/.kube/config"
+    config_context         = "kind-edgewatch"
+    insecure               = false
+    load_config_file       = true
   }
 }
 
@@ -29,19 +32,34 @@ resource "kubernetes_namespace" "edgewatch" {
   }
 }
 
+# ---- Ingress NGINX (pinned + waits + NodePort for kind) ----
 resource "helm_release" "ingress_nginx" {
-  name             = "ingress-nginx"
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  namespace        = kubernetes_namespace.edgewatch.metadata[0].name
-  create_namespace = false
+  name              = "ingress-nginx"
+  repository        = "https://kubernetes.github.io/ingress-nginx"
+  chart             = "ingress-nginx"
+  version           = "4.11.2"
+  namespace         = kubernetes_namespace.edgewatch.metadata[0].name
+  create_namespace  = false
+  wait              = true
+  timeout           = 600
+  dependency_update = true
+
+  set {
+    name  = "controller.service.type"
+    value = "NodePort"
+  }
 }
 
+# ---- PostgreSQL (pinned + waits) ----
 resource "helm_release" "postgres" {
-  name       = "postgres"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "postgresql"
-  namespace  = kubernetes_namespace.edgewatch.metadata[0].name
+  name              = "postgres"
+  repository        = "https://charts.bitnami.com/bitnami"
+  chart             = "postgresql"
+  version           = "15.5.22"
+  namespace         = kubernetes_namespace.edgewatch.metadata[0].name
+  wait              = true
+  timeout           = 600
+  dependency_update = true
 
   set {
     name  = "auth.postgresPassword"
@@ -73,8 +91,9 @@ resource "kubernetes_deployment" "api" {
 
       spec {
         container {
-          name  = "api"
-          image = "${var.registry}/edgewatch-api:${var.image_tag}"
+          name               = "api"
+          image              = "${var.registry}/edgewatch-api:${var.image_tag}"
+          image_pull_policy  = "IfNotPresent"
 
           port {
             container_port = 8000
@@ -126,6 +145,7 @@ resource "kubernetes_service" "api" {
   }
 }
 
+# Ensure ingress is created only after the controller is installed
 resource "kubernetes_ingress_v1" "api" {
   metadata {
     name      = "edgewatch-api"
@@ -155,5 +175,7 @@ resource "kubernetes_ingress_v1" "api" {
       }
     }
   }
+
+  depends_on = [helm_release.ingress_nginx]
 }
 
