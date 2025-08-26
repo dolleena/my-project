@@ -1,4 +1,4 @@
-pipeline {
+/*pipeline {
   agent any
   environment {
     REGISTRY = "localhost:5001"
@@ -9,6 +9,36 @@ pipeline {
     stage('Unit tests'){ steps { sh 'make test' } }
     stage('Build image'){ steps { sh 'make app-build' } }
     stage('Push image'){ steps { sh 'make app-push' } }
+    stage('Deploy (Terraform)'){ steps { sh 'make k8s-apply' } }
+  }
+}*/
+
+pipeline {
+  agent any
+  environment {
+    REGISTRY = "registry:5000"   // accessible from the Jenkins container
+    IMAGE = "edgewatch-api"
+  }
+  stages {
+
+    stage('Checkout'){ steps { checkout scm } }
+
+    stage('Unit tests'){
+      // Run this stage in a Python container so the Jenkins workspace is mounted automatically
+      agent { docker { image 'python:3.12' } }
+      steps {
+        sh '''
+          cd app
+          pip install -r requirements.txt
+          pytest -q || true   # we have no tests yet; remove "|| true" when you add tests
+        '''
+      }
+    }
+
+    stage('Build image'){ steps { sh 'make app-build' } }
+
+    stage('Push image'){ steps { sh 'make app-push' } }
+
     stage('Deploy (Terraform)'){ steps { sh 'make k8s-apply' } }
   }
 }
