@@ -3,12 +3,12 @@ services:
     image: jenkins/jenkins:lts
     user: root
     ports:
-      - "8090:8080"        # Jenkins UI on http://localhost:8090
+      - "8091:8080"          # Jenkins UI at http://localhost:8091
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock   # allow talking to host Docker
-      - /usr/bin/docker:/usr/bin/docker             # docker CLI inside container
+      - /var/run/docker.sock:/var/run/docker.sock   # talk to host Docker
+      - /usr/bin/docker:/usr/bin/docker             # docker CLI binary
       - ~/.kube:/root/.kube
       - ./..:/workspace
 volumes:
