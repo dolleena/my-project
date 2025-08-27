@@ -24,16 +24,16 @@ pipeline {
     stage('Checkout'){ steps { checkout scm } }
 
     stage('Unit tests'){
-      // Run this stage in a Python container so the Jenkins workspace is mounted automatically
-      agent { docker { image 'python:3.12' } }
-      steps {
-        sh '''
-          cd app
-          pip install -r requirements.txt
-          pytest -q || true   # we have no tests yet; remove "|| true" when you add tests
-        '''
-      }
-    }
+  steps {
+    sh '''
+      cd app
+      python3 -m venv .venv
+      . .venv/bin/activate
+      pip install -r requirements.txt
+      pytest -q || true
+    '''
+  }
+}
 
     stage('Build image'){ steps { sh 'make app-build' } }
 
